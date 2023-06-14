@@ -36,7 +36,8 @@ def get_initial_collection(username):
     Retrieve the initial collection from the specified profile.
 
     Returns:
-        dict: The collection data.
+        fan_id (int): the fan's unique identifier
+        collection (dict): The collection data.
     """
     logging.info(f"Retrieving initial collection from {username}...")
     profile_url = f"https://bandcamp.com/{username}"
@@ -49,8 +50,9 @@ def get_initial_collection(username):
     decoded_string = html.unescape(matches[0])
     data = json.loads(decoded_string)
     collection = data["item_cache"]["collection"]
+    fan_id = data["fan_data"]["fan_id"]
 
-    return collection
+    return fan_id, collection
 
 
 def process_collection(collection):
@@ -80,12 +82,13 @@ def process_collection(collection):
     return df
 
 
-def get_newest_item(df):
+def get_payload(df, fan_id):
     """
-    Get the payload for retrieving the newest item in the DataFrame.
+    Get the payload by retrieving the newest item in the DataFrame.
 
     Args:
         df (pandas.DataFrame): The DataFrame.
+        fan_id (int): the fan's unique identifier
 
     Returns:
         dict: The payload for retrieving the newest item.
@@ -93,7 +96,7 @@ def get_newest_item(df):
     logging.info("Getting payload for the newest item...")
     ni = df.loc[df["unix_time"].argmax()]  # newest item
     older_than_token = f"{ni['unix_time']}:{ni['item_id']}:t::"  # TODO include item_type here so it isn't just static
-    payload = {"fan_id": 781768, "older_than_token": older_than_token, "count": 10000}
+    payload = {"fan_id": fan_id, "older_than_token": older_than_token, "count": 10000}
     return payload
 
 
@@ -190,9 +193,9 @@ def main(username):
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     logging.info("Location extraction started 🗺️")
 
-    collection = get_initial_collection(username)
+    fan_id, collection = get_initial_collection(username)
     df = process_collection(collection)
-    payload = get_newest_item(df)
+    payload = get_payload(df, fan_id)
     collection = get_collection(payload)
     band_urls = [item["band_url"] for item in collection["items"]]
     band_urls = list(set(band_urls))
@@ -206,7 +209,7 @@ def main(username):
     df = pd.DataFrame(rows)
     df = split_location(df)
 
-    out_path = "bc-locations.csv"
+    out_path = f"{username}-bc-locations.csv"
     df.to_csv(out_path, index=False)
     logging.info(f"Locations saved in {out_path}")
 

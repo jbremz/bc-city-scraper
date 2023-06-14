@@ -21,6 +21,8 @@ python main.py --username <target bandcamp username>
 
 The extracted data will be saved to a `bc-locations.csv` file.
 
+**NOTE:** the request rate to the bandcamp website has been throttled
+
 ## Possible future extensions 🔮
 
 - include wishlisted items
